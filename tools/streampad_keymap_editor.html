@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamPad キーマップエディタ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e1e2e, #0f0f1e);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #64b5f6;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            color: #999;
+        }
+
+        .grid-container {
+            background: rgba(30, 30, 46, 0.8);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .keypad-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .key-button {
+            aspect-ratio: 1;
+            background: linear-gradient(145deg, #2a2a3e, #1e1e2e);
+            border: 2px solid #444;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: inherit;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .key-button:hover {
+            border-color: #64b5f6;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(100, 181, 246, 0.3);
+        }
+
+        .key-button.filled {
+            background: linear-gradient(145deg, #2a4a3e, #1e3e2e);
+            border-color: #4caf50;
+        }
+        
+        .key-button.selected {
+            background: linear-gradient(145deg, #4a4a3e, #3e3e2e);
+            border-color: #ffeb3b !important;
+            border-width: 3px !important;
+            box-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
+        }
+
+        .key-label {
+            font-weight: bold;
+            font-size: 14px;
+            color: #fff;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .key-modifier {
+            font-size: 10px;
+            color: #64b5f6;
+            margin-top: 4px;
+        }
+
+        .key-position {
+            position: absolute;
+            top: 4px;
+            left: 6px;
+            font-size: 10px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            min-width: 140px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(145deg, #64b5f6, #42a5f5);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(145deg, #4caf50, #388e3c);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(145deg, #ff9800, #f57c00);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(145deg, #1e1e2e, #0f0f1e);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #444;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal h3 {
+            margin-bottom: 20px;
+            color: #64b5f6;
+            font-size: 1.4em;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ccc;
+            font-weight: bold;
+        }
+
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background: #2a2a3e;
+            color: white;
+            font-size: 14px;
+        }
+
+        .form-group input[type="text"]:focus {
+            outline: none;
+            border-color: #64b5f6;
+        }
+
+        .modifier-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #64b5f6;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            font-weight: normal;
+            cursor: pointer;
+        }
+
+        .key-display {
+            background: #2a2a3e;
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid #444;
+            text-align: center;
+            font-family: monospace;
+            font-size: 16px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        .btn-modal {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-save {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-cancel {
+            background: #666;
+            color: white;
+        }
+
+        .output {
+            background: rgba(30, 30, 46, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .output h3 {
+            color: #64b5f6;
+            margin-bottom: 15px;
+        }
+
+        .output pre {
+            background: #0f0f1e;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            max-height: 300px;
+        }
+
+        @media (max-width: 768px) {
+            .keypad-grid {
+                gap: 10px;
+                max-width: 100%;
+                grid-template-columns: repeat(5, 1fr);
+            }
+            
+            .key-button {
+                border-radius: 8px;
+            }
+            
+            .key-label {
+                font-size: 12px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>StreamPad キーマップエディタ</h1>
+            <p>5x7グリッド（Nexus 7用）のキーマップを編集してJSONファイルを生成します</p>
+        </div>
+
+        <div class="grid-container">
+            <div class="keypad-grid" id="keypad">
+                <!-- 35個のボタンが動的に生成されます (5x7) -->
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="exportJSON()">JSONエクスポート</button>
+            <button class="btn btn-success" onclick="loadSample()">サンプル読み込み</button>
+            <button class="btn btn-success" onclick="loadJSON()">JSON読み込み</button>
+            <button class="btn" id="moveToggle" onclick="toggleMoveMode()">移動モード</button>
+            <button class="btn btn-warning" onclick="clearAll()">全クリア</button>
+        </div>
+
+        <div class="output" id="output" style="display: none;">
+            <h3>生成されたJSON</h3>
+            <pre id="jsonOutput"></pre>
+            <button class="btn btn-primary" onclick="downloadJSON()">ダウンロード</button>
+            <button class="btn btn-success" onclick="copyToClipboard()">クリップボードにコピー</button>
+        </div>
+    </div>
+
+    <!-- 隠しファイル入力 -->
+    <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="handleFileLoad(event)">
+
+    <!-- キー設定モーダル -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">キー設定</h3>
+            
+            <div class="form-group">
+                <label for="label">ラベル:</label>
+                <input type="text" id="label" placeholder="例: Copy, Paste, F5">
+            </div>
+
+            <div class="form-group">
+                <label>修飾キー:</label>
+                <div class="modifier-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="ctrl">
+                        <label for="ctrl">Ctrl</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="alt">
+                        <label for="alt">Alt</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="shift">
+                        <label for="shift">Shift</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="win">
+                        <label for="win">Win</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>キー入力:</label>
+                <div class="key-display" id="keyDisplay">キーを押してください</div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn-modal btn-save" onclick="saveKey()">保存</button>
+                <button class="btn-modal btn-delete" onclick="deleteKey()">削除</button>
+                <button class="btn-modal btn-cancel" onclick="closeModal()">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPosition = 0;
+        let keyMappings = {};
+        let capturedKeyCode = null;
+        let isCapturingKey = false;
+        
+        // 移動機能用
+        let selectedPosition = null;
+        let isMoveModeEnabled = false;
+        
+        // JavaScript KeyCode to HID Usage ID mapping
+        const keyCodeToHID = {
+            // Letters
+            65: 0x04, // A
+            66: 0x05, // B
+            67: 0x06, // C
+            68: 0x07, // D
+            69: 0x08, // E
+            70: 0x09, // F
+            71: 0x0A, // G
+            72: 0x0B, // H
+            73: 0x0C, // I
+            74: 0x0D, // J
+            75: 0x0E, // K
+            76: 0x0F, // L
+            77: 0x10, // M
+            78: 0x11, // N
+            79: 0x12, // O
+            80: 0x13, // P
+            81: 0x14, // Q
+            82: 0x15, // R
+            83: 0x16, // S
+            84: 0x17, // T
+            85: 0x18, // U
+            86: 0x19, // V
+            87: 0x1A, // W
+            88: 0x1B, // X
+            89: 0x1C, // Y
+            90: 0x1D, // Z
+            
+            // Numbers
+            48: 0x27, // 0
+            49: 0x1E, // 1
+            50: 0x1F, // 2
+            51: 0x20, // 3
+            52: 0x21, // 4
+            53: 0x22, // 5
+            54: 0x23, // 6
+            55: 0x24, // 7
+            56: 0x25, // 8
+            57: 0x26, // 9
+            
+            // Function keys
+            112: 0x3A, // F1
+            113: 0x3B, // F2
+            114: 0x3C, // F3
+            115: 0x3D, // F4
+            116: 0x3E, // F5
+            117: 0x3F, // F6
+            118: 0x40, // F7
+            119: 0x41, // F8
+            120: 0x42, // F9
+            121: 0x43, // F10
+            122: 0x44, // F11
+            123: 0x45, // F12
+            
+            // Special keys
+            13: 0x28,  // Enter
+            27: 0x29,  // Escape
+            8: 0x2A,   // Backspace
+            9: 0x2B,   // Tab
+            32: 0x2C,  // Space
+            46: 0x4C,  // Delete
+            
+            // Arrow keys
+            37: 0x50, // Left
+            38: 0x52, // Up
+            39: 0x4F, // Right
+            40: 0x51, // Down
+            
+            // Navigation
+            36: 0x4A, // Home
+            35: 0x4D, // End
+            33: 0x4B, // Page Up
+            34: 0x4E, // Page Down
+            
+            // Punctuation
+            186: 0x33, // ; :
+            187: 0x2E, // = +
+            188: 0x36, // , <
+            189: 0x2D, // - _
+            190: 0x37, // . >
+            191: 0x38, // / ?
+            192: 0x35, // ` ~
+            219: 0x2F, // [ {
+            220: 0x31, // \ |
+            221: 0x30, // ] }
+            222: 0x34  // ' "
+        };
+        
+        // HID modifier flags (matching app's constants)
+        const HID_MODIFIERS = {
+            NONE: 0x00,
+            CTRL: 0x01,
+            SHIFT: 0x02,
+            ALT: 0x04,
+            WIN: 0x08
+        };
+
+        // 初期化
+        function init() {
+            createKeypad();
+            setupKeyCapture();
+        }
+
+        // キーパッドグリッド作成
+        function createKeypad() {
+            const keypad = document.getElementById('keypad');
+            
+            for (let i = 1; i <= 35; i++) {
+                const button = document.createElement('button');
+                button.className = 'key-button';
+                button.onclick = () => handleKeyClick(i);
+                
+                button.innerHTML = `
+                    <div class="key-position">${i}</div>
+                    <div class="key-label" id="key-${i}-label">空</div>
+                    <div class="key-modifier" id="key-${i}-modifier"></div>
+                `;
+                
+                keypad.appendChild(button);
+            }
+        }
+
+        // モーダル開く
+        function openModal(position) {
+            currentPosition = position;
+            const modal = document.getElementById('modal');
+            const title = document.getElementById('modalTitle');
+            
+            title.textContent = `キー設定 (位置: ${position})`;
+            
+            // 既存の設定を読み込み
+            const existing = keyMappings[position];
+            if (existing) {
+                document.getElementById('label').value = existing.label || '';
+                document.getElementById('ctrl').checked = existing.modifier & HID_MODIFIERS.CTRL;
+                document.getElementById('alt').checked = existing.modifier & HID_MODIFIERS.ALT;
+                document.getElementById('shift').checked = existing.modifier & HID_MODIFIERS.SHIFT;
+                document.getElementById('win').checked = existing.modifier & HID_MODIFIERS.WIN;
+                document.getElementById('keyDisplay').textContent = 
+                    existing.keyCode ? `HID: 0x${existing.keyCode.toString(16).padStart(2, '0').toUpperCase()}` : 'キーを押してください';
+                capturedKeyCode = existing.keyCode;
+            } else {
+                // リセット
+                document.getElementById('label').value = '';
+                document.getElementById('ctrl').checked = false;
+                document.getElementById('alt').checked = false;
+                document.getElementById('shift').checked = false;
+                document.getElementById('win').checked = false;
+                document.getElementById('keyDisplay').textContent = 'キーを押してください';
+                capturedKeyCode = null;
+            }
+            
+            modal.style.display = 'block';
+            isCapturingKey = true;
+        }
+
+        // モーダル閉じる
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            modal.style.display = 'none';
+            isCapturingKey = false;
+        }
+
+        // キーキャプチャ設定
+        function setupKeyCapture() {
+            document.addEventListener('keydown', (e) => {
+                if (!isCapturingKey) return;
+                
+                e.preventDefault();
+                
+                // 修飾キーは無視
+                if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;
+                
+                const hidCode = keyCodeToHID[e.keyCode];
+                if (hidCode !== undefined) {
+                    capturedKeyCode = hidCode;
+                    document.getElementById('keyDisplay').textContent = 
+                        `${e.key.toUpperCase()} (HID: 0x${hidCode.toString(16).padStart(2, '0').toUpperCase()})`;
+                } else {
+                    document.getElementById('keyDisplay').textContent = 
+                        `${e.key.toUpperCase()} (未対応キー: ${e.keyCode})`;
+                    capturedKeyCode = null;
+                }
+            });
+
+            // モーダル外クリックで閉じる
+            window.onclick = (e) => {
+                const modal = document.getElementById('modal');
+                if (e.target === modal) {
+                    closeModal();
+                }
+            };
+        }
+
+        // キー保存
+        function saveKey() {
+            const label = document.getElementById('label').value.trim();
+            const ctrl = document.getElementById('ctrl').checked;
+            const alt = document.getElementById('alt').checked;
+            const shift = document.getElementById('shift').checked;
+            const win = document.getElementById('win').checked;
+            
+            if (!capturedKeyCode && !label) {
+                alert('ラベルまたはキーコードを設定してください');
+                return;
+            }
+            
+            // modifier計算 (HID values)
+            let modifier = HID_MODIFIERS.NONE;
+            if (ctrl) modifier |= HID_MODIFIERS.CTRL;
+            if (shift) modifier |= HID_MODIFIERS.SHIFT;
+            if (alt) modifier |= HID_MODIFIERS.ALT;
+            if (win) modifier |= HID_MODIFIERS.WIN;
+            
+            keyMappings[currentPosition] = {
+                label: label || `Key${currentPosition}`,
+                description: label || '',
+                modifier: modifier,
+                keyCode: capturedKeyCode || 0,
+                category: 'CUSTOM',
+                isEmpty: false
+            };
+            
+            updateKeyDisplay(currentPosition);
+            closeModal();
+        }
+
+        // キー削除
+        function deleteKey() {
+            delete keyMappings[currentPosition];
+            updateKeyDisplay(currentPosition);
+            closeModal();
+        }
+
+        // キークリック処理
+        function handleKeyClick(position) {
+            if (isMoveModeEnabled) {
+                handleMoveClick(position);
+            } else {
+                openModal(position);
+            }
+        }
+        
+        // 移動モード切り替え
+        function toggleMoveMode() {
+            isMoveModeEnabled = !isMoveModeEnabled;
+            updateMoveMode(isMoveModeEnabled);
+        }
+        
+        // 移動モード更新
+        function updateMoveMode(enabled) {
+            const toggleButton = document.getElementById('moveToggle');
+            if (enabled) {
+                toggleButton.textContent = '編集モード';
+                toggleButton.className = 'btn btn-warning';
+            } else {
+                toggleButton.textContent = '移動モード';
+                toggleButton.className = 'btn';
+                selectedPosition = null;
+            }
+            
+            // 全ボタンの選択状態をリセット
+            for (let i = 1; i <= 35; i++) {
+                updateKeyDisplay(i);
+            }
+        }
+        
+        // 移動クリック処理
+        function handleMoveClick(position) {
+            if (selectedPosition === null) {
+                // 選択
+                selectedPosition = position;
+                updateKeyDisplay(position);
+            } else if (selectedPosition === position) {
+                // 選択解除
+                selectedPosition = null;
+                updateKeyDisplay(position);
+            } else {
+                // 移動実行
+                const fromData = keyMappings[selectedPosition];
+                const toData = keyMappings[position];
+                
+                // キー入れ替え
+                if (fromData) {
+                    keyMappings[position] = fromData;
+                } else {
+                    delete keyMappings[position];
+                }
+                
+                if (toData) {
+                    keyMappings[selectedPosition] = toData;
+                } else {
+                    delete keyMappings[selectedPosition];
+                }
+                
+                // 表示更新
+                updateKeyDisplay(selectedPosition);
+                updateKeyDisplay(position);
+                selectedPosition = null;
+            }
+        }
+
+        // キー表示更新
+        function updateKeyDisplay(position) {
+            const keyData = keyMappings[position];
+            const labelElement = document.getElementById(`key-${position}-label`);
+            const modifierElement = document.getElementById(`key-${position}-modifier`);
+            const buttonElement = labelElement.closest('.key-button');
+            
+            // 選択状態のスタイル更新
+            if (isMoveModeEnabled && selectedPosition === position) {
+                buttonElement.classList.add('selected');
+            } else {
+                buttonElement.classList.remove('selected');
+            }
+            
+            if (keyData) {
+                labelElement.textContent = keyData.label;
+                
+                const modifiers = [];
+                if (keyData.modifier & HID_MODIFIERS.SHIFT) modifiers.push('Shift');
+                if (keyData.modifier & HID_MODIFIERS.CTRL) modifiers.push('Ctrl');
+                if (keyData.modifier & HID_MODIFIERS.ALT) modifiers.push('Alt');
+                if (keyData.modifier & HID_MODIFIERS.WIN) modifiers.push('Win');
+                
+                modifierElement.textContent = modifiers.join('+');
+                buttonElement.classList.add('filled');
+            } else {
+                labelElement.textContent = '空';
+                modifierElement.textContent = '';
+                buttonElement.classList.remove('filled');
+            }
+        }
+
+        // JSON出力
+        function exportJSON() {
+            const shortcuts = [];
+            
+            for (let i = 1; i <= 35; i++) {
+                const keyData = keyMappings[i];
+                if (keyData) {
+                    shortcuts.push({
+                        position: i - 1, // 0-based index
+                        ...keyData
+                    });
+                } else {
+                    shortcuts.push({
+                        position: i - 1,
+                        label: '',
+                        description: '',
+                        modifier: 0,
+                        keyCode: 0,
+                        category: 'CUSTOM',
+                        isEmpty: true
+                    });
+                }
+            }
+            
+            const output = {
+                name: 'カスタムプロファイル',
+                shortcuts: shortcuts
+            };
+            
+            const jsonString = JSON.stringify(output, null, 2);
+            document.getElementById('jsonOutput').textContent = jsonString;
+            document.getElementById('output').style.display = 'block';
+            
+            // 出力部分までスクロール
+            document.getElementById('output').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // サンプル読み込み（5x7グリッド用）
+        function loadSample() {
+            const sampleMappings = {
+                // Row 2 - 編集操作
+                7: { label: 'Ctrl+Z', modifier: HID_MODIFIERS.CTRL, keyCode: 0x1D, category: 'EDIT', isEmpty: false },
+                8: { label: 'Ctrl+Y', modifier: HID_MODIFIERS.CTRL, keyCode: 0x1C, category: 'EDIT', isEmpty: false },
+                9: { label: 'F2', modifier: HID_MODIFIERS.NONE, keyCode: 0x3B, category: 'EDIT', isEmpty: false },
+                
+                // Row 3 - コピー・貼り付け
+                12: { label: 'Ctrl+C', modifier: HID_MODIFIERS.CTRL, keyCode: 0x06, category: 'COPY_PASTE', isEmpty: false },
+                13: { label: 'Ctrl+V', modifier: HID_MODIFIERS.CTRL, keyCode: 0x19, category: 'COPY_PASTE', isEmpty: false },
+                14: { label: 'Ctrl+X', modifier: HID_MODIFIERS.CTRL, keyCode: 0x1B, category: 'COPY_PASTE', isEmpty: false },
+                15: { label: 'Win+V', modifier: HID_MODIFIERS.WIN, keyCode: 0x19, category: 'COPY_PASTE', isEmpty: false },
+                
+                // Row 4 - ナビゲーション
+                17: { label: '←', modifier: HID_MODIFIERS.NONE, keyCode: 0x50, category: 'NAVIGATION', isEmpty: false },
+                18: { label: '↑', modifier: HID_MODIFIERS.NONE, keyCode: 0x52, category: 'NAVIGATION', isEmpty: false },
+                19: { label: '↓', modifier: HID_MODIFIERS.NONE, keyCode: 0x51, category: 'NAVIGATION', isEmpty: false },
+                20: { label: '→', modifier: HID_MODIFIERS.NONE, keyCode: 0x4F, category: 'NAVIGATION', isEmpty: false },
+                
+                // Row 5 - ファンクションキー
+                22: { label: 'F1', modifier: HID_MODIFIERS.NONE, keyCode: 0x3A, category: 'CUSTOM', isEmpty: false },
+                23: { label: 'F5', modifier: HID_MODIFIERS.NONE, keyCode: 0x3E, category: 'CUSTOM', isEmpty: false },
+                24: { label: 'F12', modifier: HID_MODIFIERS.NONE, keyCode: 0x45, category: 'CUSTOM', isEmpty: false },
+                
+                // Row 6 - よく使うキー
+                27: { label: 'Enter', modifier: HID_MODIFIERS.NONE, keyCode: 0x28, category: 'CUSTOM', isEmpty: false },
+                28: { label: 'Esc', modifier: HID_MODIFIERS.NONE, keyCode: 0x29, category: 'CUSTOM', isEmpty: false },
+                29: { label: 'Tab', modifier: HID_MODIFIERS.NONE, keyCode: 0x2B, category: 'CUSTOM', isEmpty: false },
+                30: { label: 'Del', modifier: HID_MODIFIERS.NONE, keyCode: 0x4C, category: 'CUSTOM', isEmpty: false }
+            };
+            
+            keyMappings = { ...sampleMappings };
+            selectedPosition = null;
+            updateMoveMode(false);
+            
+            for (let i = 1; i <= 35; i++) {
+                updateKeyDisplay(i);
+            }
+        }
+
+        // JSON読み込み
+        function loadJSON() {
+            document.getElementById('fileInput').click();
+        }
+        
+        // ファイル読み込み処理
+        function handleFileLoad(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    loadFromJSON(jsonData);
+                } catch (error) {
+                    alert('JSONファイルの読み込みに失敗しました: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        // JSONデータからキーマッピング読み込み
+        function loadFromJSON(jsonData) {
+            keyMappings = {};
+            
+            if (jsonData.shortcuts) {
+                jsonData.shortcuts.forEach((shortcut, index) => {
+                    if (!shortcut.isEmpty && shortcut.label) {
+                        const position = (shortcut.position !== undefined) ? shortcut.position + 1 : index + 1;
+                        keyMappings[position] = {
+                            label: shortcut.label || '',
+                            description: shortcut.description || '',
+                            modifier: shortcut.modifier || 0,
+                            keyCode: shortcut.keyCode || 0,
+                            category: shortcut.category || 'CUSTOM',
+                            isEmpty: false
+                        };
+                    }
+                });
+            }
+            
+            // 表示を更新
+            for (let i = 1; i <= 35; i++) {
+                updateKeyDisplay(i);
+            }
+            
+            alert('JSONファイルを読み込みました');
+        }
+
+        // 全クリア
+        function clearAll() {
+            if (confirm('すべてのキーマッピングをクリアしますか？')) {
+                keyMappings = {};
+                selectedPosition = null;
+                updateMoveMode(false);
+                for (let i = 1; i <= 35; i++) {
+                    updateKeyDisplay(i);
+                }
+                document.getElementById('output').style.display = 'none';
+            }
+        }
+
+        // ダウンロード
+        function downloadJSON() {
+            const jsonData = document.getElementById('jsonOutput').textContent;
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'streampad_keymap.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // クリップボードにコピー
+        function copyToClipboard() {
+            const jsonData = document.getElementById('jsonOutput').textContent;
+            navigator.clipboard.writeText(jsonData).then(() => {
+                alert('クリップボードにコピーしました！');
+            }).catch(() => {
+                alert('コピーに失敗しました');
+            });
+        }
+
+        // 初期化実行
+        init();
+    </script>
+</body>
+</html>
