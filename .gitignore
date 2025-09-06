@@ -1,0 +1,24 @@
+# Android/Gradle
+.gradle/
+.gradle-home/
+**/build/
+**/.cxx/
+**/.externalNativeBuild/
+local.properties
+*.iml
+.idea/
+.DS_Store
+# Signing / credentials
+*.jks
+*.keystore
+keystore.properties
+*.keystore.properties
+# Google/Firebase
+**/google-services.json
+# Outputs
+*.apk
+*.apks
+*.aab
+# Tools/cache
+captures/
+/.claude/
