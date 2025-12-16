@@ -167,6 +167,7 @@ fun MainScreen(
                 onSilentModeChange = onSilentModeChange,
                 bluetoothSupported = bluetoothSupported,
                 usbSupported = usbSupported,
+                usbConfigfsAvailable = usbConfigfsAvailable,
                 onNavigateToProfileManagement = {
                     showSettings = false
                     onNavigateToProfileManagement()
@@ -235,12 +236,6 @@ fun SettingsMenu(
                             onClick = { onConnectionModeChange(ConnectionMode.BLUETOOTH) },
                             enabled = bluetoothSupported,
                             label = { Text(stringResource(id = R.string.mode_bluetooth)) }
-                        )
-                        FilterChip(
-                            selected = connectionMode == ConnectionMode.USB,
-                            onClick = { onConnectionModeChange(ConnectionMode.USB) },
-                            enabled = usbSupported,
-                            label = { Text(stringResource(id = R.string.mode_usb)) }
                         )
                     }
 
@@ -504,7 +499,7 @@ fun ShortcutButton(
                             }
                         }
                     )
-                },
+                }
                 .semantics {
                     contentDescription = buildString {
                         append(shortcut.label)

@@ -10,9 +10,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class MainViewModel(context: Context) : ViewModel() {
-    
-    private val profileManager = ProfileManager(context)
+class MainViewModel(
+    context: Context,
+    private val profileManager: ProfileManager
+) : ViewModel() {
     private val _shortcuts = MutableStateFlow(getDefaultShortcuts())
     val shortcuts: StateFlow<List<Shortcut>> = _shortcuts
     

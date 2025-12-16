@@ -9,6 +9,5 @@ data class Settings(
 )
 
 enum class ConnectionMode {
-    BLUETOOTH,
-    USB
+    BLUETOOTH
 }

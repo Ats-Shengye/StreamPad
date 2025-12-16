@@ -33,19 +33,26 @@ import com.streampad.bt.ui.ProfileManagementScreen
 import com.streampad.bt.ui.KeepAliveScreen
 import com.streampad.bt.ui.theme.StreamPadTheme
 import com.streampad.bt.utils.SettingsManager
+import com.streampad.bt.utils.ProfileManagerFactory
 import com.streampad.bt.model.ConnectionMode
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.streampad.bt.hid.HidClientManager
+import com.streampad.bt.hid.HidResult
+
+// Magic Number を定数化
+private const val VIBRATION_DURATION_MS = 50L
+private const val LONG_PRESS_DELAY_MS = 1000L
+private const val CONTINUOUS_INPUT_INTERVAL_MS = 100L
+private const val SCROLL_LOCK_KEY_CODE: Byte = 0x47
 
 class MainActivity : ComponentActivity() {
-    
+
     private lateinit var hidManager: HidClientManager
     private var isServiceReady by mutableStateOf(false)
     private lateinit var vibrator: Vibrator
     private lateinit var settingsManager: SettingsManager
-
 
     private val requestBluetoothPermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -71,14 +78,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         settingsManager = SettingsManager(this)
         hidManager = HidClientManager(applicationContext)
         lifecycleScope.launch {
             hidManager.isReady.collect { isServiceReady = it }
         }
-        
+
         setContent {
             StreamPadTheme {
                 Surface(
@@ -86,9 +93,14 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    val viewModel: MainViewModel = viewModel { MainViewModel(applicationContext) }
+                    val viewModel: MainViewModel = viewModel {
+                        MainViewModel(
+                            applicationContext,
+                            ProfileManagerFactory.create(applicationContext)
+                        )
+                    }
                     val settings by settingsManager.settings.collectAsStateWithLifecycle()
-                    
+
                     // Keep an imperative mirror of connectionMode
                     LaunchedEffect(settings.connectionMode) {
                         currentConnectionMode = settings.connectionMode
@@ -104,17 +116,12 @@ class MainActivity : ComponentActivity() {
                                 isServiceConnected = isServiceReady,
                                 settings = settings,
                                 onConnectionModeChange = { mode ->
-                                    val ok = when (mode) {
+                                    when (mode) {
                                         ConnectionMode.BLUETOOTH -> {
                                             checkPermissionsAndStartBtService()
-                                            true // result is async
-                                        }
-                                        ConnectionMode.USB -> {
-                                            requestNotificationPermissionIfNeeded()
-                                            hidManager.switchTo(ConnectionMode.USB)
+                                            settingsManager.updateConnectionMode(mode)
                                         }
                                     }
-                                    if (ok) settingsManager.updateConnectionMode(mode)
                                 },
                                 onShortcutClick = { shortcut ->
                                     sendShortcut(shortcut.modifier, shortcut.keyCode)
@@ -151,7 +158,7 @@ class MainActivity : ComponentActivity() {
                                 usbConfigfsAvailable = hidManager.isUsbConfigFsAvailable()
                             )
                         }
-                        
+
                         composable("profile_management") {
                             ProfileManagementScreen(
                                 viewModel = viewModel,
@@ -160,7 +167,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        
+
                         composable("keep_alive") {
                             KeepAliveScreen(
                                 onNavigateBack = {
@@ -168,7 +175,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onSendKeepAlive = {
                                     // ScrollLockキーを送信 (HID Usage ID: 0x47)
-                                    sendShortcut(0, 0x47)
+                                    sendShortcut(0, SCROLL_LOCK_KEY_CODE)
                                 }
                             )
                         }
@@ -176,14 +183,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        
+
         // Start an initial service based on saved setting
         val initialMode = settingsManager.settings.value.connectionMode
         if (initialMode == ConnectionMode.BLUETOOTH) {
             checkPermissionsAndStartBtService()
-        } else {
-            requestNotificationPermissionIfNeeded()
-            hidManager.switchTo(ConnectionMode.USB)
         }
     }
 
@@ -201,8 +205,8 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        if (permissions.all { 
-            ActivityCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED 
+        if (permissions.all {
+            ActivityCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }) {
             enableBluetooth()
         } else {
@@ -213,7 +217,7 @@ class MainActivity : ComponentActivity() {
     private fun enableBluetooth() {
         val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         val bluetoothAdapter = bluetoothManager.adapter
-        
+
         if (bluetoothAdapter?.isEnabled == false) {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             enableBluetoothLauncher.launch(enableBtIntent)
@@ -224,7 +228,15 @@ class MainActivity : ComponentActivity() {
 
     private fun switchToBluetooth() {
         requestNotificationPermissionIfNeeded()
-        hidManager.switchTo(ConnectionMode.BLUETOOTH)
+        val result = hidManager.switchTo(ConnectionMode.BLUETOOTH)
+        when (result) {
+            is HidResult.Success -> {
+                // Success, no action needed
+            }
+            is HidResult.Failure.Unsupported -> {
+                Toast.makeText(applicationContext, result.message, Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun sendShortcut(modifier: Byte, keyCode: Byte) {
@@ -232,21 +244,21 @@ class MainActivity : ComponentActivity() {
     }
 
     private var continuousInputJob: Job? = null
-    
+
     private fun startContinuousInput(modifier: Byte, keyCode: Byte) {
         stopContinuousInput() // Cancel any existing continuous input
         continuousInputJob = lifecycleScope.launch {
-            // Wait 1 second before starting continuous input (prevent accidental repeat)
-            delay(1000)
+            // Wait before starting continuous input (prevent accidental repeat)
+            delay(LONG_PRESS_DELAY_MS)
             if (isActive) {
                 while (isActive) {
                     sendShortcut(modifier, keyCode)
-                    delay(100)
+                    delay(CONTINUOUS_INPUT_INTERVAL_MS)
                 }
             }
         }
     }
-    
+
     private fun stopContinuousInput() {
         continuousInputJob?.cancel()
         continuousInputJob = null
@@ -254,10 +266,15 @@ class MainActivity : ComponentActivity() {
 
     private fun vibrate() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+            vibrator.vibrate(
+                VibrationEffect.createOneShot(
+                    VIBRATION_DURATION_MS,
+                    VibrationEffect.DEFAULT_AMPLITUDE
+                )
+            )
         } else {
             @Suppress("DEPRECATION")
-            vibrator.vibrate(50)
+            vibrator.vibrate(VIBRATION_DURATION_MS)
         }
     }
 
