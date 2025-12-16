@@ -1,42 +1,111 @@
-# Streampad Android
-左手デバイス風アプリ。
-Nexus 7 (2013) での利用を想定。
-Android (Kotlin) アプリ。GitHub 公開用にビルド成果物と個人環境ファイルを除外済み。
+# StreamPad Android
 
-## Build
-- 推奨: Android Studio (stable) で開く → Sync → Run
-- CLI: `./gradlew assembleDebug`
+Bluetooth HID対応の左手デバイス風キーボードアプリ。古いタブレット（Nexus 7 2013等）を外部キーパッドとして再活用。
 
-## Tools
-- Keymap Generator: `tools/streampad_keymap_editor.html`
-  - ブラウザで開いて編集 → エクスポート
-  - 生成したマップのインポート先や形式は `app/` 実装に合わせて各自で調整（現状は汎用 JSON/テキスト想定）。
+## 機能
+
+- Bluetooth HIDプロファイルでPCに接続（キーボードとして認識）
+- カスタマイズ可能なショートカットグリッド（Compact/Expanded）
+- プロファイル管理（保存・切替・インポート/エクスポート）
+- 長押しでキーリピート
+- 触覚フィードバック（バイブレーション）
+
+## 技術スタック
+
+- Kotlin
+- Jetpack Compose
+- Bluetooth HID Device Profile
+- EncryptedFile（プロファイル暗号化）
+- Kotlinx Serialization
+
+## ファイル構成
+
+```
+app/src/main/java/com/streampad/bt/
+├── MainActivity.kt           # エントリーポイント
+├── hid/
+│   ├── BluetoothHidClient.kt # Bluetooth HID実装
+│   ├── HidClientManager.kt   # HIDクライアント管理
+│   └── HidResult.kt          # 操作結果型
+├── model/
+│   ├── Profile.kt            # プロファイルデータ
+│   ├── Settings.kt           # 設定
+│   └── Shortcut.kt           # ショートカット定義
+├── service/
+│   └── BluetoothHidService.kt # Bluetoothサービス
+├── ui/
+│   ├── MainScreen.kt         # メイン画面
+│   ├── MainViewModel.kt      # ViewModel
+│   └── ProfileManagementScreen.kt
+└── utils/
+    ├── ProfileManager.kt     # プロファイル永続化（暗号化）
+    └── SettingsManager.kt    # 設定管理
+
+tools/
+└── streampad_keymap_editor.html  # キーマップ編集ツール
+```
+
+## セットアップ
+
+### 必要なもの
+
+- JDK 17
+- Android SDK（Android Studio推奨）
+- Bluetooth HID対応のAndroid端末（API 30+）
+
+### ビルド
+
+```bash
+# Android Studioで開く → Sync → Run
+# または CLI:
+./gradlew assembleDebug
+
+# リリースビルド（署名設定が必要）
+./gradlew assembleRelease
+```
+
+### local.properties
+
+```properties
+sdk.dir=/path/to/Android/Sdk
+```
+
+## 使い方
+
+1. アプリを起動
+2. Bluetooth権限を許可
+3. PC側でBluetoothデバイス検索 → ペアリング
+4. 接続後、グリッドのボタンをタップでキー送信
+
+### キーマップ編集
+
+`tools/streampad_keymap_editor.html` をブラウザで開いてプロファイルを作成・編集。
+
+## セキュリティ
+
+- プロファイルデータはAES-256-GCMで暗号化（Android Keystore連携）
+- リリースビルドはProGuardでコード難読化・ログ削除
+- `allowBackup=false`（クラウドバックアップ無効）
 
 ## Toolchain
-- JDK: 17
-- Gradle Wrapper: 8.7 (wrapper で自動取得)
-- Android Gradle Plugin: 8.6.1
-- Kotlin: 1.9.22 / Compose Compiler: 1.5.8
 
-## Requirements
-- Android SDK: `local.properties` は除外済み（各自 `sdk.dir` を設定）
-- CLI 派は `ANDROID_SDK_ROOT` か `ANDROID_HOME` を環境変数で指定可
+| ツール | バージョン |
+|--------|-----------|
+| JDK | 17 |
+| Gradle Wrapper | 8.7 |
+| Android Gradle Plugin | 8.6.1 |
+| Kotlin | 1.9.22 |
+| Compose Compiler | 1.5.8 |
+| Target SDK | 34 |
+| Min SDK | 30 |
 
-## Notes
-- keystore や `google-services.json` はリポジトリに含まず
-- Issue/PR で構成変更がある場合は `.gitignore` を更新
+## 更新履歴
 
-## 用意してほしいもの（ユーザー側）
-- JDK 17: インストールは各自。Android Studio 同梱の JDK でも可。
-- Android SDK: Android Studio を入れれば自動。CLI ビルド派は環境変数で指定。
-  - 例: `export ANDROID_SDK_ROOT="$HOME/Android/Sdk"`
-- `local.properties`: SDK パスのみのローカル専用ファイル。
-  - 例: `sdk.dir=/home/{USER}/Android/Sdk`
-- リリース署名用のキーストア（リリースビルドを作る場合のみ必要）
-  - keystore 本体（`.jks`/`.keystore`）、パスワード、`keyAlias`
-  - これらはコミットしない。`signingConfigs` は各自のローカルで設定。
-- Firebase/Google サービスを使う場合のみ
-  - `app/google-services.json` を各自取得して配置
-  - 使うときは `app/build.gradle.kts` の `plugins` ブロックに `id("com.google.gms.google-services")` を追加
+### v1.1
+- USB HID機能削除（root不要化）
+- プロファイル暗号化（EncryptedFile）
+- ProGuard有効化
+- コード品質改善（Result型、DI対応）
 
-現状のコードでは外部 API キー類は不要。追加する場合は `BuildConfig` などに注入、値は環境変数や未コミットの設定ファイルから読み込み。
+### v1.0
+- 初回リリース
