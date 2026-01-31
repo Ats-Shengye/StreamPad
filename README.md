@@ -73,3 +73,4 @@ Bluetooth接続でPCにキーボードとして認識させ、カスタマイズ
 ## 関連ドキュメント
 
 - [GLOSSARY.md](./GLOSSARY.md) - コード内の主要な変数・関数・型の役割一覧
+- [SPEC.md](./SPEC.md) - 機能仕様
