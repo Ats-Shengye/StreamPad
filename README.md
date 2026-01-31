@@ -1,49 +1,16 @@
 # StreamPad Android
 
-Bluetooth HID対応の左手デバイス風キーボードアプリ。古いタブレット（Nexus 7 2013等）を外部キーパッドとして再活用。
-
-## 機能
-
-- Bluetooth HIDプロファイルでPCに接続（キーボードとして認識）
-- カスタマイズ可能なショートカットグリッド（Compact/Expanded）
-- プロファイル管理（保存・切替・インポート/エクスポート）
-- 長押しでキーリピート
-- 触覚フィードバック（バイブレーション）
+使わなくなったAndroidタブレットを、PCのショートカットキーパッドとして再活用するアプリ。
+Bluetooth接続でPCにキーボードとして認識させ、カスタマイズ可能な5×7グリッドからワンタップでショートカットキーを送信する。
+古いタブレット（Nexus 7 2013等）に最適化した左手デバイス風キーボードアプリ。
 
 ## 技術スタック
 
-- Kotlin
-- Jetpack Compose
-- Bluetooth HID Device Profile
-- EncryptedFile（プロファイル暗号化）
-- Kotlinx Serialization
-
-## ファイル構成
-
-```
-app/src/main/java/com/streampad/bt/
-├── MainActivity.kt           # エントリーポイント
-├── hid/
-│   ├── BluetoothHidClient.kt # Bluetooth HID実装
-│   ├── HidClientManager.kt   # HIDクライアント管理
-│   └── HidResult.kt          # 操作結果型
-├── model/
-│   ├── Profile.kt            # プロファイルデータ
-│   ├── Settings.kt           # 設定
-│   └── Shortcut.kt           # ショートカット定義
-├── service/
-│   └── BluetoothHidService.kt # Bluetoothサービス
-├── ui/
-│   ├── MainScreen.kt         # メイン画面
-│   ├── MainViewModel.kt      # ViewModel
-│   └── ProfileManagementScreen.kt
-└── utils/
-    ├── ProfileManager.kt     # プロファイル永続化（暗号化）
-    └── SettingsManager.kt    # 設定管理
-
-tools/
-└── streampad_keymap_editor.html  # キーマップ編集ツール
-```
+- 言語: Kotlin
+- フレームワーク: Jetpack Compose
+- 主要技術: Bluetooth HID Device Profile
+- セキュリティ: AES-256-GCM暗号化（Android Keystore連携）
+- シリアライゼーション: Kotlinx Serialization
 
 ## セットアップ
 
@@ -64,22 +31,15 @@ tools/
 ./gradlew assembleRelease
 ```
 
-### local.properties
-
-```properties
-sdk.dir=/path/to/Android/Sdk
-```
-
-## 使い方
+### 使い方
 
 1. アプリを起動
 2. Bluetooth権限を許可
 3. PC側でBluetoothデバイス検索 → ペアリング
 4. 接続後、グリッドのボタンをタップでキー送信
+5. 長押しでキーリピート（10Hz間隔）
 
-### キーマップ編集
-
-`tools/streampad_keymap_editor.html` をブラウザで開いてプロファイルを作成・編集。
+キーマップ編集: `tools/streampad_keymap_editor.html` をブラウザで開いてプロファイルを作成・編集。
 
 ## セキュリティ
 
@@ -109,3 +69,7 @@ sdk.dir=/path/to/Android/Sdk
 
 ### v1.0
 - 初回リリース
+
+## 関連ドキュメント
+
+- [GLOSSARY.md](./GLOSSARY.md) - コード内の主要な変数・関数・型の役割一覧
